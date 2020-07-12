@@ -1,0 +1,30 @@
+{
+	"manifest_version": 2,
+	"name": "ParadoxExport",
+	"description": "TBD",
+	"version": "1.0",
+	"homepage_url": "https://paradoxsolutions.gerhard-wagner.dev",
+
+	"content_scripts": [
+		{
+			"matches": ["https://www.dndbeyond.com/equipment/*"],
+			"js": ["equipment.js"]
+		},
+		{
+			"matches": ["https://www.dndbeyond.com/monsters/*"],
+			"js": ["monster.js"]
+		},
+		{
+			"matches": ["https://*/game"],
+			"js": ["foundry.js"]
+		}
+	],
+
+	"background": {
+		"scripts": ["background.js"]
+	},
+
+	"permissions": [
+		"tabs"
+	]
+}
