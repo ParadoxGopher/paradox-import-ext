@@ -1,5 +1,6 @@
 
 let header = document.querySelector('.page-heading__content')
+
 header.innerHTML += '<button id="paradox_import_start">Import</button>'
 
 // TODO: remove import button if already in compendium
@@ -29,5 +30,5 @@ button.onclick = () => {
 		payload: e,
 	}
 
-	browser.runtime.sendMessage(msg).then((m) => console.log(m), (e) => console.error(e))
+	browser.runtime.sendMessage(JSON.stringify(msg)).then((m) => console.log(m), (e) => console.error(e))
 }
