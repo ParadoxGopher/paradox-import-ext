@@ -16,6 +16,8 @@ browser.runtime.onMessage.addListener((request, sender, respond) => {
 
 function sendToTabs(message) {
 	return (tabs) => {
-		browser.tabs.sendMessage(tabs[0].id, message).then(console.log).catch(console.error)
+		tabs.forEach(tab => {
+			browser.tabs.sendMessage(tab.id, message).then(console.log).catch(console.error)
+		});
 	}
-}
+}	

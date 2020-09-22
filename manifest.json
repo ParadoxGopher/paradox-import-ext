@@ -7,6 +7,10 @@
 
 	"content_scripts": [
 		{
+			"matches": ["https://www.dndbeyond.com/spells/*"],
+			"js": ["spell.js", "./utils/translation.js"]
+		},
+		{
 			"matches": ["https://www.dndbeyond.com/equipment/*"],
 			"js": ["equipment.js"]
 		},

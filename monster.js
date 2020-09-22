@@ -1,11 +1,13 @@
 let header = document.querySelector('.page-heading__suffix')
 let name = document.querySelector('a.mon-stat-block__name-link').innerText.trim()
+let requestId = name
 
-browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "monster-request", payload: name } }))
+browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "monster-request", payload: name, requestId: requestId } }))
 
 browser.runtime.onMessage.addListener((req, s, respond) => {
 	respond("kthxbye")
-	if (req.type !== "monster-response") return
+	console.log(req)
+	if (req.type !== "monster-response" || req.requestId !== requestId) return
 	let text = req.payload ? "update" : "import"
 	if (!document.getElementById('paradox_import_start')) {
 		let button = document.createElement("button")
@@ -412,7 +414,7 @@ async function fetchSpells(doc) {
 			const element = parser.parseFromString(body.Tooltip, "text/html")
 
 			let spell = NewSpell()
-			spell.parseSpellItem(element)
+			spell.parseSpellTooltip(element)
 
 			spells.push(spell)
 		}).catch(console.error)
@@ -551,9 +553,9 @@ function NewItem(params) {
 			let damageMatches = action.match(/\d+ \((\d+d\d+( \+ \d+)?)\) (\w+) (\w+)/g)
 			if (damageMatches != null) {
 				damageMatches.forEach(m => {
-					let res = m.match(/\d+ \((?<damage>\d+d\d+( \+ \d+)?)\) (?<type>\w+) damage/)
+					let res = m.match(/\d+ \((?<damage>\d+d\d+( \+ \d+)?)\) (?<type>\w+)/)
 					if (res == null) return
-					this.data.damage.parts.push([res.groups.damage, res.groups.type])
+					this.data.damage.parts.push([res.groups.damage, parseDamageType(res.groups.type)])
 				})
 			}
 

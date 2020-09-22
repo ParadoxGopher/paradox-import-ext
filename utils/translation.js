@@ -124,3 +124,25 @@ function translateDuration(dur) {
 function shortifyAttribute(attribute) {
 	return attribute.substring(0, 3).toLowerCase()
 }
+
+function parseDamageType(type) {
+	switch (type) {
+		case "acid":
+		case "bludgeoning":
+		case "cold":
+		case "fire":
+		case "force":
+		case "lightning":
+		case "necrotic":
+		case "piercing":
+		case "poison":
+		case "psychic":
+		case "radiant":
+		case "slashing":
+		case "thunder":
+		case "healing":
+			return type
+		default:
+			return "none"
+	}
+}
