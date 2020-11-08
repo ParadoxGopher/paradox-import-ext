@@ -34,7 +34,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 					ac: { value: 10 },
 					hp: { value: 10, max: 10, formula: "1d20" },
 					speed: { value: "30 ft.", special: "" },
-					spellcasting: "none",
+					// spellcasting: "none",
 				},
 				details: {
 					alignment: '',
@@ -550,12 +550,16 @@ function NewItem(params) {
 			}
 
 			//================== Damage Information ==================//
-			let damageMatches = action.match(/\d+ \((\d+d\d+( \+ \d+)?)\) (\w+) (\w+)/g)
+			let damageMatches = action.match(/\d+ \((\d+d\d+( \+ \d+)?)\) (\w+) (\w+)([\s\w]+)?/g)
 			if (damageMatches != null) {
 				damageMatches.forEach(m => {
-					let res = m.match(/\d+ \((?<damage>\d+d\d+( \+ \d+)?)\) (?<type>\w+)/)
+					let res = m.match(/\d+ \((?<damage>\d+d\d+( \+ \d+)?)\) (?<type>\w+)( damage )?(?<versatile>if used with two hands)?/)
 					if (res == null) return
-					this.data.damage.parts.push([res.groups.damage, parseDamageType(res.groups.type)])
+					if (res.groups.versatile) {
+						this.data.damage.versatile = res.groups.damage
+					} else {
+						this.data.damage.parts.push([res.groups.damage, parseDamageType(res.groups.type)])
+					}
 				})
 			}
 

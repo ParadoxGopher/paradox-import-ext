@@ -247,6 +247,11 @@ function NewSpell() {
 				})
 			}
 
+			let versatileDamageMatch = this.data.description.value.match(/instead takes (?<form>\d+d\d+) (?<type>\w+) damage/)
+			if (versatileDamageMatch) {
+				this.data.damage.versatile = versatileDamageMatch.groups.form
+			}
+
 			//================== ActionType ==================//
 			if (this.data.description.value.match(/make a ranged spell attack/i)) {
 				this.data.actionType = "rsak"
