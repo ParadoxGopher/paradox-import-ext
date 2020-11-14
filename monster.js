@@ -5,7 +5,6 @@ let requestId = name
 browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "monster-request", payload: name, requestId: requestId } }))
 
 browser.runtime.onMessage.addListener((req, s, respond) => {
-	respond("kthxbye")
 	console.log(req)
 	if (req.type !== "monster-response" || req.requestId !== requestId) return
 	let text = req.payload ? "update" : "import"
@@ -310,7 +309,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 				monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
 			}
 		} else {
-			spellFeat = monster.items.find(i => i.name === "Innate Spellcasting")
+			spellFeat = monster.items.find(i => i.name.startsWith("Innate Spellcasting"))
 			if (spellFeat) {
 				let spellabilityMatch = spellFeat.data.description.value.match(/spellcasting ability is (?<ability>\w+)/)
 				if (spellabilityMatch) {
@@ -414,7 +413,7 @@ async function fetchSpells(doc) {
 			const element = parser.parseFromString(body.Tooltip, "text/html")
 
 			let spell = NewSpell()
-			spell.parseSpellTooltip(element)
+			spell.parseSpellItem(element)
 
 			spells.push(spell)
 		}).catch(console.error)
@@ -687,7 +686,7 @@ function NewSpell() {
 
 		parseSpellItem(raw) {
 			this.name = raw.querySelector('.tooltip-header-text').innerText.trim()
-			this.data.description.value = raw.querySelector('.tooltip-body-description-text').innerHTML.replace(/ href="\//g, " href=\"https://www.dndbeyond.com")
+			this.data.description.value = raw.querySelector('.tooltip-body-description-text').innerHTML.replace(/ href="\//g, " href=\"https://www.dndbeyond.com/")
 
 			//================== Level ==================//
 			let levelMatch = raw.querySelector('.tooltip-body-statblock-item-level .tooltip-body-statblock-item-value').innerText.match(/\d/)

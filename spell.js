@@ -5,7 +5,6 @@ let requestId = name
 browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "spell-request", payload: name, requestId: requestId } }))
 
 browser.runtime.onMessage.addListener((req, s, respond) => {
-	respond("kthxbye")
 	console.log(req)
 	if (req.type !== "spell-response" || req.requestId !== requestId) return
 	let text = req.payload ? "update" : "import"

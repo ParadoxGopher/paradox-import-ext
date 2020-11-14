@@ -1,6 +1,5 @@
 browser.runtime.onMessage.addListener((request, sender, respond) => {
 	console.log("received: ", sender, request)
-	respond("kthxbye")
 
 	switch (request.type) {
 		case "spell-response":
@@ -10,14 +9,17 @@ browser.runtime.onMessage.addListener((request, sender, respond) => {
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/monsters/*"}).then(sendToTabs(request)).catch(console.error)
 			break
 		default:
-			browser.tabs.query({ "url": "*://*./game" }).then(sendToTabs(request)).catch(console.error)
+			browser.tabs.query({ "url": "*://*/game" }).then(sendToTabs(request, 1)).catch(console.error)
 	}
 })
 
-function sendToTabs(message) {
+function sendToTabs(message, limit = Infinity) {
 	return (tabs) => {
+		let count = 0
 		tabs.forEach(tab => {
-			browser.tabs.sendMessage(tab.id, message).then(console.log).catch(console.error)
+			if (count >= limit) return
+			browser.tabs.sendMessage(tab.id, message).catch(console.error)
+			count++
 		});
 	}
 }	

@@ -19,10 +19,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 			break
 		default:
 			console.error("received unknown message type: " + r.type)
-			respond("received unknown message type: " + r.type)
 	}
-
-	respond("kthxbye")
 })
 
 document.addEventListener(ResponseEvent, e => {
