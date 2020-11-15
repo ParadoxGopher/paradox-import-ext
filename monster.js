@@ -283,7 +283,23 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 					}
 					continue
 				}
-				if (feat.data.attackBonus > 0) { feat.data.attackBonus -= profMod }
+				if (feat.data.attackBonus > 0) { 
+					// (r|m)wak => dex || str
+					if (feat.data.actionType.endsWith("wak")) {
+						if (calcAbilityMod(monster.data.abilities.str.value) + profMod == feat.data.attackBonus) {
+							feat.data.ability = "str"
+							feat.data.attackBonus = 0
+						} else if (calcAbilityMod(monster.data.abilities.dex.value) + profMod == feat.data.attackBonus) {
+							feat.data.ability = "dex"
+							feat.data.attackBonus = 0
+						} else {
+							// TODO what to do now ?
+							feat.data.attackBonus -= profMod
+						}
+					} else {
+						feat.data.attackBonus = 0
+					}
+				}
 				monster.items.push(feat)
 			}
 		}
@@ -427,12 +443,6 @@ function NewItem(params) {
 	return {
 		name: '',
 		type: '',
-		flags: {
-			betterRolls5e: {
-				quickDesc: { type: "Boolean", value: false, altValue: true },
-				quickDamage: { context: {} },
-			}
-		},
 		data: {
 			ability: '',
 			actionType: '', //eg save
@@ -460,16 +470,16 @@ function NewItem(params) {
 				type: "",
 			},
 			formula: "",
-			chatFlavour: '', // TODO
+			chatFlavour: '',
 			consume: {
 				type: "",
 				target: "",
 				amount: null,
 			},
-			critical: null, // TODO
+			critical: null,
 			damage: {
 				parts: [], //eg ["1d10+4", "fire"], ["1d4", "radiant"]
-				versatile: "", // TODO
+				versatile: "",
 			},
 			description: {
 				chat: '', // TODO
