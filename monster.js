@@ -33,6 +33,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 					ac: { value: 10 },
 					hp: { value: 10, max: 10, formula: "1d20" },
 					speed: { value: "30 ft.", special: "" },
+					senses: { blindsight: 0, darkvision: 0, tremorsense: 0, truesight: 0, special: "", units: "ft"},
 					// spellcasting: "none",
 				},
 				details: {
@@ -110,7 +111,6 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 					dv: { value: [] },
 
 					languages: { value: [], custom: "" },
-					senses: "",
 					size: "med"
 				},
 			},
@@ -198,7 +198,23 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 					break
 				//================== Senses ==================//
 				case "Senses":
-					monster.data.traits.senses = data.innerText.trim()
+					data.innerText.trim().split(",").forEach(s => {
+						let match = s.match(/ (?<range>\d+) ft\./)
+						trimmed = s.trim()
+						console.log(trimmed, match)
+						if (trimmed.startsWith("Blindsight") && match && match.groups.range) {
+							monster.data.attributes.senses.blindsight = parseInt(match.groups.range)
+						} else if (trimmed.startsWith("Darkvision") && match && match.groups.range) {
+							monster.data.attributes.senses.darkvision = parseInt(match.groups.range)
+						} else if (trimmed.startsWith("Truesight") && match && match.groups.range) {
+							monster.data.attributes.senses.truesight = parseInt(match.groups.range)
+						} else if (trimmed.startsWith("Tremorsense") && match && match.groups.range) {
+							monster.data.attributes.senses.tremorsense = parseInt(match.groups.range)
+						} else if (!trimmed.startsWith("Passive Perception")) {
+							monster.data.attributes.senses.special = trimmed
+						}
+					})
+
 					break
 				//================== Languages ==================//
 				case "Languages":
@@ -294,7 +310,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 							feat.data.attackBonus = 0
 						} else {
 							// TODO what to do now ?
-							feat.data.attackBonus -= profMod
+							feat.data.attackBonus = -profMod
 						}
 					} else {
 						feat.data.attackBonus = 0
@@ -450,7 +466,7 @@ function NewItem(params) {
 				type: '', //eg reaction
 				cost: 0,
 			},
-			attackBonus: 0,
+			attackBonus: null,
 			range: {
 				value: null,
 				units: '',
@@ -628,7 +644,7 @@ function NewSpell() {
 				type: '', //eg reaction
 				cost: 0,
 			},
-			attackBonus: 0,
+			attackBonus: null,
 			components: {
 				concentration: false,
 				material: false,

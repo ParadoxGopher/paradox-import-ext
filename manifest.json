@@ -11,6 +11,10 @@
 			"js": ["browser-polyfill.js", "spell.js", "./utils/translation.js"]
 		},
 		{
+			"matches": ["https://www.dndbeyond.com/feats/*"],
+			"js": ["browser-polyfill.js", "feat.js", "./utils/translation.js"]
+		},
+		{
 			"matches": ["https://www.dndbeyond.com/equipment/*"],
 			"js": ["browser-polyfill.js", "equipment.js"]
 		},

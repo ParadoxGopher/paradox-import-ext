@@ -142,6 +142,8 @@ function parseDamageType(type) {
 		case "thunder":
 		case "healing":
 			return type
+		case "temporary":
+			return "temphp"
 		default:
 			return "none"
 	}
@@ -184,5 +186,16 @@ function calcAbilityMod(score) {
 		default:
 			let mod = score-10
 			return Math.floor(mod/2)
+	}
+}
+
+function translateUseType(useType) {
+	switch (useType) {
+		case "Short Rest":
+			return "sr"
+		case "Long Rest":
+			return "lr"
+		default:
+			return useType
 	}
 }

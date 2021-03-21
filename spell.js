@@ -130,6 +130,8 @@ function NewSpell() {
 			this.flags.betterRolls5e.quickDesc.value = true
 			this.name = name
 			this.data.description.value = page.innerHTML.replace(/ href="\//g, " href=\"https://www.dndbeyond.com/")
+			this.data.description.value = this.data.description.value.replace(/<div class="image">\s*<a .*>\n\s*<img .*\n\s*<\/a>\n\s*<\/div>\n/, "")
+			this.data.description.value = this.data.description.value.replace(/<script.*\n/, "")
 
 			//================== Level ==================//
 			let levelMatch = page.querySelector('div[class$=statblock-item-level] div[class$=statblock-item-value]').innerText.match(/\d/)

@@ -5,9 +5,13 @@ browser.runtime.onMessage.addListener((request, sender, respond) => {
 		case "spell-response":
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/spells/*"}).then(sendToTabs(request)).catch(console.error)
 			break
+		case "feat-response":
+			browser.tabs.query({ "url": "*://*.dndbeyond.com/feats/*"}).then(sendToTabs(request)).catch(console.error)
+			break
 		case "monster-response":
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/monsters/*"}).then(sendToTabs(request)).catch(console.error)
 			break
+		case "char-response":
 		case "actor-response":
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/profile/*/characters/*"}).then(sendToTabs(request)).catch(console.error)
 			break

@@ -1,6 +1,7 @@
 const ItemImportEvent = "paradox-import:incoming:item"
 const MonsterImportEvent = "paradox-import:incoming:monster"
 const ActorImportEvent = "paradox-import:incoming:actor"
+const CharImportEvent = "paradox-import:incoming:char"
 const RequestEvent = "paradox-import:request"
 const ResponseEvent = "paradox-import:response"
 
@@ -20,6 +21,10 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 			break
 		case 'actor':
 			document.dispatchEvent(new CustomEvent(ActorImportEvent, { detail: JSON.stringify(r.payload) }))
+			break
+		case "char":
+			document.dispatchEvent(new CustomEvent(CharImportEvent, { detail: JSON.stringify(r.payload) }))
+			break;
 		default:
 			console.error("received unknown message type: " + r.type)
 	}
