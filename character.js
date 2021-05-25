@@ -141,12 +141,12 @@ function parseSpell() {
 	}
 
 	if (schoolText.toLowerCase() === "transmutation") {
-		item.school = "trs"
+		item.data.school = "trs"
 	} else {
-		item.school = shortifyAttribute(schoolText)
+		item.data.school = shortifyAttribute(schoolText)
 	}
 
-	item.level = level
+	item.data.level = level
 
 	item.data.components = {
 		concentration: false,
@@ -197,6 +197,10 @@ function parseSpell() {
 				item.data.activation.type = translateToSingular(castTimeUnit[1].toLowerCase())
 				break
 			case "Duration:":
+				if (value == "Instantaneous") {
+					item.data.duration.units = "inst"
+					break
+				}
 				const durationUnit = value.split(" ")
 				item.data.duration.value = parseInt(durationUnit[0])
 				item.data.duration.type = translateToSingular(durationUnit[1].toLowerCase())
@@ -204,14 +208,14 @@ function parseSpell() {
 			case "Source:":
 				item.data.source = value
 				break
-			case "Range:": // TODO not working
+			case "Range/Area:": // TODO not working
 				const node = p.querySelector(".ddbc-property-list__property-content")
+				console.error(node)
+				// range
+				item.data.range.value = node.childNodes[0].querySelector(".ddbc-distance-number__number").innerText
+				item.data.range.units = "ft"
 				// range and area
-				if (node.childNodes.length == 4) {
-					// range
-					item.data.rage = node.childNodes[0].querySelector(".ddbc-distance-number__number").innerText
-					item.data.range.units = "ft"
-
+				if (node.childNodes.length > 2) {
 					// area
 					item.data.target.value = node.childNodes[2].querySelector(".ddbc-distance-number__number").innerText
 					item.data.target.units = "ft"
