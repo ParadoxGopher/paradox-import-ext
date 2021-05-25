@@ -41,7 +41,7 @@ function NewSpell() {
 			betterRolls5e: {
 				critRange: { type: "String", value: "", },
 				critDamage: { type: "String", value: "", },
-				quickDesc: { type: "Boolean", value: false, altValue: true, },
+				quickDesc: { type: "Boolean", value: true, altValue: true, },
 				quickAttack: { type: "Boolean", value: true, altValue: true, },
 				quickSave: { type: "Boolean", value: true, altValue: true, },
 				quickDamage: { type: "Array", value: [], altValue: [], context: {} },

@@ -7,409 +7,22 @@ browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "
 browser.runtime.onMessage.addListener((req, s, respond) => {
 	console.log(req)
 	if (req.type !== "monster-response" || req.requestId !== requestId) return
-	let text = req.payload ? "update" : "import"
+	let importUpdate = req.payload.actor ? "update" : "import"
 	if (!document.getElementById('paradox_import_start')) {
 		let button = document.createElement("button")
-		let textNode = document.createTextNode(text)
-		button.appendChild(textNode)
+		let actorText = document.createTextNode("actor: "+req.payload.actor+"\n")
+		let compendiumText = document.createTextNode("compendium: "+req.payload.compendium+"\n")
+		let importText = document.createTextNode(importUpdate)
+		button.appendChild(actorText)
+		button.appendChild(compendiumText)
+		button.appendChild(importText)
 		button.id = "paradox_import_start"
 
 		header.appendChild(button)
 	}
 
 	document.getElementById('paradox_import_start').onclick = async () => {
-		let monster = {
-			name: '',
-			data: {
-				abilities: {
-					cha: { value: 10, proficient: 0 },
-					con: { value: 10, proficient: 0 },
-					dex: { value: 10, proficient: 0 },
-					int: { value: 10, proficient: 0 },
-					str: { value: 10, proficient: 0 },
-					wis: { value: 10, proficient: 0 },
-				},
-				attributes: {
-					ac: { value: 10 },
-					hp: { value: 10, max: 10, formula: "1d20" },
-					speed: { value: "30 ft.", special: "" },
-					senses: { blindsight: 0, darkvision: 0, tremorsense: 0, truesight: 0, special: "", units: "ft"},
-					// spellcasting: "none",
-				},
-				details: {
-					alignment: '',
-					cr: 1,
-					source: '',
-					type: '',
-					environment: '',
-					biography: { value: "<p>hallo welt</p>" },
-					spellLevel: 0,
-				},
-				resources: {
-					lair: { value: false, initiative: null },
-					legact: { value: 0, max: 0 },
-					legres: { value: 0, max: 0 },
-				},
-				skills: {
-					//acrobatic
-					acr: { value: 0, ability: "dex" },
-					//animal handling
-					ani: { value: 0, ability: "wis" },
-					//arcana
-					arc: { value: 0, ability: "int" },
-					//athletics
-					ath: { value: 0, ability: "str" },
-					//deception
-					dec: { value: 0, ability: "cha" },
-					//history
-					his: { value: 0, ability: "int" },
-					//insight
-					ins: { value: 0, ability: "wis" },
-					//investigation
-					inv: { value: 0, ability: "int" },
-					//intimidation
-					itm: { value: 0, ability: "cha" },
-					//medicine
-					med: { value: 0, ability: "wis" },
-					//nature
-					nat: { value: 0, ability: "int" },
-					//persuasion
-					per: { value: 0, ability: "cha" },
-					//perception
-					prc: { value: 0, ability: "wis" },
-					//performance
-					prf: { value: 0, ability: "cha" },
-					//religion
-					rel: { value: 0, ability: "int" },
-					//sleight of hand
-					slt: { value: 0, ability: "dex" },
-					//stealth
-					ste: { value: 0, ability: "dex" },
-					//survival
-					sur: { value: 0, ability: "wis" },
-				},
-				spells: {
-					pact: { value: 99 },
-					spell1: { value: 99 },
-					spell2: { value: 99 },
-					spell3: { value: 99 },
-					spell4: { value: 99 },
-					spell5: { value: 99 },
-					spell6: { value: 99 },
-					spell7: { value: 99 },
-					spell8: { value: 99 },
-					spell9: { value: 99 },
-				},
-				traits: {
-					//condition immunities
-					ci: { value: [] },
-					//damage immunities
-					di: { value: [] },
-					//damage resistance
-					dr: { value: [] },
-					//damage vulnerabilities
-					dv: { value: [] },
-
-					languages: { value: [], custom: "" },
-					size: "med"
-				},
-			},
-			items: [],
-			type: "npc",
-			token: {
-				displayBars: 40,
-				width: 1,
-				height: 1,
-				scale: 1,
-				bar1: { attribute: "attributes.hp" },
-			},
-		}
-
-
-		//================== Reference ==================//
-		monster.url = window.location.href
-
-		//================== Image ==================//
-		monster.img = document.querySelector('.details-aside .image a').href
-
-		//================== Name ==================//
-		monster.name = document.querySelector('a.mon-stat-block__name-link').innerText.trim()
-
-		//================== Meta ==================//
-		let meta = document.querySelector('.mon-stat-block__meta').innerText
-		let parts = meta.split(',')
-		let [size, ...type] = parts[0].split(" ")
-		monster.data.traits.size = translateSize(size.toLowerCase().trim())
-		monster.data.details.type = type.join(" ")
-		monster.data.details.alignment = parts[1].trim()
-
-		//================== AC/HP/Speed ==================//
-		let acHpSpeed = document.querySelectorAll('.mon-stat-block__attributes .mon-stat-block__attribute')
-		monster.data.attributes.ac.value = parseInt(acHpSpeed[0].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
-		monster.data.attributes.hp.value = parseInt(acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
-		monster.data.attributes.hp.max = monster.data.attributes.hp.value
-		monster.data.attributes.hp.formula = acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-extra').innerText.replace('(', '').replace(')', '').trim()
-		let [speed, ...specials] = acHpSpeed[2].querySelector('.mon-stat-block__attribute-data-value').innerText.trim().split(", ")
-		monster.data.attributes.speed.value = speed
-		monster.data.attributes.speed.special = specials.join(";")
-
-		//================== Attributes ==================//
-		const statBlock = document.querySelector('.mon-stat-block__stat-block')
-		monster.data.abilities.dex.value = parseInt(statBlock.querySelector('.ability-block__stat--dex .ability-block__score').innerText)
-		monster.data.abilities.str.value = parseInt(statBlock.querySelector('.ability-block__stat--str .ability-block__score').innerText)
-		monster.data.abilities.con.value = parseInt(statBlock.querySelector('.ability-block__stat--con .ability-block__score').innerText)
-		monster.data.abilities.int.value = parseInt(statBlock.querySelector('.ability-block__stat--int .ability-block__score').innerText)
-		monster.data.abilities.wis.value = parseInt(statBlock.querySelector('.ability-block__stat--wis .ability-block__score').innerText)
-		monster.data.abilities.cha.value = parseInt(statBlock.querySelector('.ability-block__stat--cha .ability-block__score').innerText)
-
-		//================== Proficiencies/Traits ==================//
-		var titbits = document.querySelectorAll('.mon-stat-block__tidbits .mon-stat-block__tidbit')
-
-		titbits.forEach(t => {
-			if (t.querySelector('.mon-stat-block__tidbit-label').innerText.trim() === "Challenge") {
-				monster.data.details.cr = parseInt(t.querySelector('.mon-stat-block__tidbit-data').innerText.split(' ')[0].trim())
-			}
-		})
-
-		//================== Proficiency Modifier ==================//
-		const profMod = challengeRatingToProfMod(monster.data.details.cr)
-		titbits.forEach(tidbit => {
-			const label = tidbit.querySelector('.mon-stat-block__tidbit-label').innerText.trim()
-			const data = tidbit.querySelector('.mon-stat-block__tidbit-data')
-
-			switch (label) {
-				//================== Saving Throws ==================//
-				case "Saving Throws":
-					let savingMatches = data.innerText.match(/(\w){3} \+\d/g)
-					if (savingMatches) {
-						savingMatches.forEach(m => {
-							monster.data.abilities[m.split(' ')[0].toLowerCase()].proficient = 1
-						})
-					}
-					break
-				//================== Skills ==================//
-				case "Skills":
-					data.innerText.replace('+', '').split(', ').forEach(s => {
-						let mod = parseFloat(s.split(' ')[1])
-						let skill = translateSkills(s.split(' ')[0])
-						mod -= parseInt(statBlock.querySelector('.ability-block__stat--' + monster.data.skills[skill].ability + ' .ability-block__modifier').innerText.replace(/(\(|\)|\+)/g, ""))
-						monster.data.skills[skill].value = mod / profMod
-					})
-					break
-				//================== Senses ==================//
-				case "Senses":
-					data.innerText.trim().split(",").forEach(s => {
-						let match = s.match(/ (?<range>\d+) ft\./)
-						trimmed = s.trim()
-						console.log(trimmed, match)
-						if (trimmed.startsWith("Blindsight") && match && match.groups.range) {
-							monster.data.attributes.senses.blindsight = parseInt(match.groups.range)
-						} else if (trimmed.startsWith("Darkvision") && match && match.groups.range) {
-							monster.data.attributes.senses.darkvision = parseInt(match.groups.range)
-						} else if (trimmed.startsWith("Truesight") && match && match.groups.range) {
-							monster.data.attributes.senses.truesight = parseInt(match.groups.range)
-						} else if (trimmed.startsWith("Tremorsense") && match && match.groups.range) {
-							monster.data.attributes.senses.tremorsense = parseInt(match.groups.range)
-						} else if (!trimmed.startsWith("Passive Perception")) {
-							monster.data.attributes.senses.special = trimmed
-						}
-					})
-
-					break
-				//================== Languages ==================//
-				case "Languages":
-					data.innerText.split(', ').forEach(l => {
-						if (l.trim().length > 14) {
-							monster.data.traits.languages.custom = l.trim()
-						} else {
-							monster.data.traits.languages.value.push(l.toLowerCase().trim())
-						}
-					})
-					break
-				//================== Resistances ==================//
-				case "Condition Immunities":
-					data.innerText.split(', ').forEach(ci => {
-						monster.data.traits.ci.value.push(ci.toLowerCase())
-					})
-					break
-				case "Damage Immunities":
-					data.innerText.split(', ').forEach(di => {
-						monster.data.traits.di.value.push(di.toLowerCase())
-					})
-					break
-				case "Damage Vulnerabilities":
-					data.innerText.split(', ').forEach(dv => {
-						monster.data.traits.dv.value.push(dv.toLowerCase())
-					})
-					break
-				case "Damage Resistances":
-					data.innerText.split(', ').forEach(dr => {
-						monster.data.traits.dr.value.push(dr.toLowerCase())
-					})
-					break
-			}
-		})
-
-		//================== Actions / Reactions / Feats ==================//
-		let descBlocks = document.querySelectorAll('.mon-stat-block__description-block')
-		for (let descIndex = 0; descIndex < descBlocks.length; descIndex++) {
-			let b = descBlocks[descIndex]
-			var label = ''
-			var heading = b.querySelector('.mon-stat-block__description-block-heading')
-			if (heading) {
-				label = heading.innerText
-			}
-			var data = b.querySelector('.mon-stat-block__description-block-content')
-
-			let docs = data.querySelectorAll('p')
-			for (let i = 0; i < docs.length; i++) {
-				let p = docs[i]
-				let feat = NewItem()
-				if (!feat.parseActionItem(p, label)) {
-					if (label !== "Legendary Actions") {
-						let spells = await fetchSpells(p)
-
-						let useMatch = p.innerText.match(/^(?<uses>\d+)\/(?<unit>\w+)/)
-						if (useMatch) {
-							spells.forEach(s => {
-								s.data.uses.value = useMatch.groups.uses
-								s.data.uses.max = useMatch.groups.uses
-								s.data.uses.per = useMatch.groups.unit.toLowerCase()
-								s.data.preparation.mode = "innate"
-							})
-						}
-
-						let willMatch = p.innerText.match(/^At will/)
-						if (willMatch) {
-							spells.forEach(s => s.data.preparation.mode = "atwill")
-						}
-
-						monster.items.push(...spells)
-						continue
-					}
-					let legactMatch = p.innerText.match(/take (up to )?((?<word>[a-zA-Z]+)|(?<number>\d+)) legendary actions/)
-					if (legactMatch != null) {
-						if (legactMatch.groups.word) {
-							monster.data.resources.legact.value = translateNumber(legactMatch.groups.word)
-							monster.data.resources.legact.max = translateNumber(legactMatch.groups.word)
-						} else {
-							monster.data.resources.legact.value = parseInt(legactMatch.groups.number)
-							monster.data.resources.legact.max = parseInt(legactMatch.groups.number)
-						}
-					}
-					continue
-				}
-				if (feat.data.attackBonus > 0) { 
-					// (r|m)wak => dex || str
-					if (feat.data.actionType.endsWith("wak")) {
-						if (calcAbilityMod(monster.data.abilities.str.value) + profMod == feat.data.attackBonus) {
-							feat.data.ability = "str"
-							feat.data.attackBonus = 0
-						} else if (calcAbilityMod(monster.data.abilities.dex.value) + profMod == feat.data.attackBonus) {
-							feat.data.ability = "dex"
-							feat.data.attackBonus = 0
-						} else {
-							// TODO what to do now ?
-							feat.data.attackBonus = -profMod
-						}
-					} else {
-						feat.data.attackBonus = 0
-					}
-				}
-				monster.items.push(feat)
-			}
-		}
-
-		//================== Legendary Resistance ==================//
-		let desc = document.querySelector('.mon-stat-block__description-blocks')
-		let legresMatch = desc.innerText.match(/Legendary Resistance \((?<legres>\d+)\//)
-		if (legresMatch != null) {
-			monster.data.resources.legres.value = legresMatch.groups.legres
-			monster.data.resources.legres.max = legresMatch.groups.legres
-		}
-
-		//================== Spellcasting ==================//
-		let spellFeat = monster.items.find(i => i.name === "Spellcasting")
-		if (spellFeat) {
-			let spellcasterlevelMatch = spellFeat.data.description.value.match(/(?<level>\d+)\w+-level spellcaster/)
-			if (spellcasterlevelMatch) {
-				monster.data.details.spellLevel = spellcasterlevelMatch.groups.level
-			}
-
-			let spellabilityMatch = spellFeat.data.description.value.match(/spellcasting ability is (?<ability>\w+)/)
-			if (spellabilityMatch) {
-				monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
-			}
-		} else {
-			spellFeat = monster.items.find(i => i.name.startsWith("Innate Spellcasting"))
-			if (spellFeat) {
-				let spellabilityMatch = spellFeat.data.description.value.match(/spellcasting ability is (?<ability>\w+)/)
-				if (spellabilityMatch) {
-					monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
-				}
-			}
-		}
-
-		//================== Description / Source / Environment ==================//
-		monster.data.details.biography.value = document.querySelector('.detail-content .more-info-content').innerHTML
-		monster.data.details.source = document.querySelector('p.monster-source').innerText
-		let env = document.querySelectorAll('.environment-tag')
-		if (env) {
-			let envs = []
-			env.forEach(e => envs.push(e.innerText))
-			monster.data.details.environment = envs.join(',')
-		}
-
-		//================== Lair Actions ==================//
-		let descParts = document.querySelector('.mon-details__description-block-content')
-		if (descParts) {
-			for (let i = 0; i < descParts.children.length; i++) {
-				if (descParts.children[i].innerText !== "Lair Actions") {
-					continue
-				}
-
-				let initMatch = descParts.children[i + 1].innerText.match(/on initiative (count )?(?<init>\d+)/i)
-				if (initMatch != null) {
-					monster.data.resources.lair.initiative = initMatch.groups.init
-					monster.data.resources.lair.value = true
-				}
-				descParts.children[i + 2].querySelectorAll('li').forEach(la => {
-					let lairAction = NewItem()
-					lairAction.parseActionItem(la, "Lair")
-					if (lairAction.data.attackBonus > 0) { lairAction.data.attackBonus -= profMod }
-					lairAction.data.activation.cost = 1
-					lairAction.data.activation.type = "lair"
-					monster.items.push(lairAction)
-				})
-			}
-		}
-
-		//================== Token Optimizations ==================//
-		if (monster.data.resources.legact.value > 0) {
-			monster.token.bar2 = { attribute: "resources.legact" }
-		}
-
-		switch (monster.data.traits.size) {
-			case "tiny":
-				monster.token.scale = 0.5
-				break
-			case "sm":
-				monster.token.scale = 0.8
-				break
-			case "lg":
-				monster.token.width = 2
-				monster.token.height = 2
-				break
-			case "huge":
-				monster.token.width = 3
-				monster.token.height = 3
-				break
-			case "grg":
-				monster.token.width = 4
-				monster.token.height = 4
-				break
-		}
-
+		let monster = await scrapeMonster()
 		msg = {
 			type: "monster",
 			payload: monster,
@@ -419,6 +32,406 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 	}
 })
 
+async function scrapeMonster() {
+	let monster = {
+		name: '',
+		data: {
+			flags: {
+				betterRolls5e: {
+					quickDesc: { type: "Boolean", value: false, altValue: true },
+				}
+			},
+			abilities: {
+				cha: { value: 10, proficient: 0 },
+				con: { value: 10, proficient: 0 },
+				dex: { value: 10, proficient: 0 },
+				int: { value: 10, proficient: 0 },
+				str: { value: 10, proficient: 0 },
+				wis: { value: 10, proficient: 0 },
+			},
+			attributes: {
+				ac: { value: 10 },
+				hp: { value: 10, max: 10, formula: "1d20" },
+				speed: { value: "30 ft.", special: "" },
+				senses: { blindsight: 0, darkvision: 0, tremorsense: 0, truesight: 0, special: "", units: "ft"},
+				// spellcasting: "none",
+			},
+			details: {
+				alignment: '',
+				cr: 1,
+				source: '',
+				type: '',
+				environment: '',
+				biography: { value: "<p>hallo welt</p>" },
+				spellLevel: 0,
+			},
+			resources: {
+				lair: { value: false, initiative: null },
+				legact: { value: 0, max: 0 },
+				legres: { value: 0, max: 0 },
+			},
+			skills: {
+				//acrobatic
+				acr: { value: 0, ability: "dex" },
+				//animal handling
+				ani: { value: 0, ability: "wis" },
+				//arcana
+				arc: { value: 0, ability: "int" },
+				//athletics
+				ath: { value: 0, ability: "str" },
+				//deception
+				dec: { value: 0, ability: "cha" },
+				//history
+				his: { value: 0, ability: "int" },
+				//insight
+				ins: { value: 0, ability: "wis" },
+				//investigation
+				inv: { value: 0, ability: "int" },
+				//intimidation
+				itm: { value: 0, ability: "cha" },
+				//medicine
+				med: { value: 0, ability: "wis" },
+				//nature
+				nat: { value: 0, ability: "int" },
+				//persuasion
+				per: { value: 0, ability: "cha" },
+				//perception
+				prc: { value: 0, ability: "wis" },
+				//performance
+				prf: { value: 0, ability: "cha" },
+				//religion
+				rel: { value: 0, ability: "int" },
+				//sleight of hand
+				slt: { value: 0, ability: "dex" },
+				//stealth
+				ste: { value: 0, ability: "dex" },
+				//survival
+				sur: { value: 0, ability: "wis" },
+			},
+			spells: {
+				pact: { value: 99 },
+				spell1: { value: 99 },
+				spell2: { value: 99 },
+				spell3: { value: 99 },
+				spell4: { value: 99 },
+				spell5: { value: 99 },
+				spell6: { value: 99 },
+				spell7: { value: 99 },
+				spell8: { value: 99 },
+				spell9: { value: 99 },
+			},
+			traits: {
+				//condition immunities
+				ci: { value: [] },
+				//damage immunities
+				di: { value: [] },
+				//damage resistance
+				dr: { value: [] },
+				//damage vulnerabilities
+				dv: { value: [] },
+
+				languages: { value: [], custom: "" },
+				size: "med"
+			},
+		},
+		items: [],
+		type: "npc",
+		token: {
+			displayBars: 40,
+			width: 1,
+			height: 1,
+			scale: 1,
+			bar1: { attribute: "attributes.hp" },
+		},
+	}
+
+
+	//================== Reference ==================//
+	monster.url = window.location.href
+
+	//================== Image ==================//
+	monster.img = document.querySelector('.details-aside .image a').href
+
+	//================== Name ==================//
+	monster.name = document.querySelector('a.mon-stat-block__name-link').innerText.trim()
+
+	//================== Meta ==================//
+	let meta = document.querySelector('.mon-stat-block__meta').innerText
+	let parts = meta.split(',')
+	let [size, ...type] = parts[0].split(" ")
+	monster.data.traits.size = translateSize(size.toLowerCase().trim())
+	monster.data.details.type = type.join(" ")
+	monster.data.details.alignment = parts[1].trim()
+
+	//================== AC/HP/Speed ==================//
+	let acHpSpeed = document.querySelectorAll('.mon-stat-block__attributes .mon-stat-block__attribute')
+	monster.data.attributes.ac.value = parseInt(acHpSpeed[0].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
+	monster.data.attributes.hp.value = parseInt(acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
+	monster.data.attributes.hp.max = monster.data.attributes.hp.value
+	monster.data.attributes.hp.formula = acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-extra').innerText.replace('(', '').replace(')', '').trim()
+	let [speed, ...specials] = acHpSpeed[2].querySelector('.mon-stat-block__attribute-data-value').innerText.trim().split(", ")
+	monster.data.attributes.speed.value = speed
+	monster.data.attributes.speed.special = specials.join(";")
+
+	//================== Attributes ==================//
+	const statBlock = document.querySelector('.mon-stat-block__stat-block')
+	monster.data.abilities.dex.value = parseInt(statBlock.querySelector('.ability-block__stat--dex .ability-block__score').innerText)
+	monster.data.abilities.str.value = parseInt(statBlock.querySelector('.ability-block__stat--str .ability-block__score').innerText)
+	monster.data.abilities.con.value = parseInt(statBlock.querySelector('.ability-block__stat--con .ability-block__score').innerText)
+	monster.data.abilities.int.value = parseInt(statBlock.querySelector('.ability-block__stat--int .ability-block__score').innerText)
+	monster.data.abilities.wis.value = parseInt(statBlock.querySelector('.ability-block__stat--wis .ability-block__score').innerText)
+	monster.data.abilities.cha.value = parseInt(statBlock.querySelector('.ability-block__stat--cha .ability-block__score').innerText)
+
+	//================== Proficiencies/Traits ==================//
+	var titbits = document.querySelectorAll('.mon-stat-block__tidbits .mon-stat-block__tidbit')
+
+	titbits.forEach(t => {
+		if (t.querySelector('.mon-stat-block__tidbit-label').innerText.trim() === "Challenge") {
+			monster.data.details.cr = parseInt(t.querySelector('.mon-stat-block__tidbit-data').innerText.split(' ')[0].trim())
+		}
+	})
+
+	//================== Proficiency Modifier ==================//
+	const profMod = challengeRatingToProfMod(monster.data.details.cr)
+	titbits.forEach(tidbit => {
+		const label = tidbit.querySelector('.mon-stat-block__tidbit-label').innerText.trim()
+		const data = tidbit.querySelector('.mon-stat-block__tidbit-data')
+
+		switch (label) {
+			//================== Saving Throws ==================//
+			case "Saving Throws":
+				let savingMatches = data.innerText.match(/(\w){3} \+\d/g)
+				if (savingMatches) {
+					savingMatches.forEach(m => {
+						monster.data.abilities[m.split(' ')[0].toLowerCase()].proficient = 1
+					})
+				}
+				break
+			//================== Skills ==================//
+			case "Skills":
+				data.innerText.replace('+', '').split(', ').forEach(s => {
+					let mod = parseFloat(s.split(' ')[1])
+					let skill = translateSkills(s.split(' ')[0])
+					mod -= parseInt(statBlock.querySelector('.ability-block__stat--' + monster.data.skills[skill].ability + ' .ability-block__modifier').innerText.replace(/(\(|\)|\+)/g, ""))
+					monster.data.skills[skill].value = mod / profMod
+				})
+				break
+			//================== Senses ==================//
+			case "Senses":
+				data.innerText.trim().split(",").forEach(s => {
+					let match = s.match(/ (?<range>\d+) ft\./)
+					trimmed = s.trim()
+					console.log(trimmed, match)
+					if (trimmed.startsWith("Blindsight") && match && match.groups.range) {
+						monster.data.attributes.senses.blindsight = parseInt(match.groups.range)
+					} else if (trimmed.startsWith("Darkvision") && match && match.groups.range) {
+						monster.data.attributes.senses.darkvision = parseInt(match.groups.range)
+					} else if (trimmed.startsWith("Truesight") && match && match.groups.range) {
+						monster.data.attributes.senses.truesight = parseInt(match.groups.range)
+					} else if (trimmed.startsWith("Tremorsense") && match && match.groups.range) {
+						monster.data.attributes.senses.tremorsense = parseInt(match.groups.range)
+					} else if (!trimmed.startsWith("Passive Perception")) {
+						monster.data.attributes.senses.special = trimmed
+					}
+				})
+
+				break
+			//================== Languages ==================//
+			case "Languages":
+				data.innerText.split(', ').forEach(l => {
+					if (l.trim().length > 14) {
+						monster.data.traits.languages.custom = l.trim()
+					} else {
+						monster.data.traits.languages.value.push(l.toLowerCase().trim())
+					}
+				})
+				break
+			//================== Resistances ==================//
+			case "Condition Immunities":
+				data.innerText.split(', ').forEach(ci => {
+					monster.data.traits.ci.value.push(ci.toLowerCase())
+				})
+				break
+			case "Damage Immunities":
+				data.innerText.split(', ').forEach(di => {
+					monster.data.traits.di.value.push(di.toLowerCase())
+				})
+				break
+			case "Damage Vulnerabilities":
+				data.innerText.split(', ').forEach(dv => {
+					monster.data.traits.dv.value.push(dv.toLowerCase())
+				})
+				break
+			case "Damage Resistances":
+				data.innerText.split(', ').forEach(dr => {
+					monster.data.traits.dr.value.push(dr.toLowerCase())
+				})
+				break
+		}
+	})
+
+	//================== Actions / Reactions / Feats ==================//
+	let descBlocks = document.querySelectorAll('.mon-stat-block__description-block')
+	for (let descIndex = 0; descIndex < descBlocks.length; descIndex++) {
+		let b = descBlocks[descIndex]
+		var label = ''
+		var heading = b.querySelector('.mon-stat-block__description-block-heading')
+		if (heading) {
+			label = heading.innerText
+		}
+		var data = b.querySelector('.mon-stat-block__description-block-content')
+
+		let docs = data.querySelectorAll('p')
+		for (let i = 0; i < docs.length; i++) {
+			let p = docs[i]
+			let feat = NewItem()
+			if (!feat.parseActionItem(p, label)) {
+				if (label !== "Legendary Actions") {
+					let spells = await fetchSpells(p)
+
+					let useMatch = p.innerText.match(/^(?<uses>\d+)\/(?<unit>\w+)/)
+					if (useMatch) {
+						spells.forEach(s => {
+							s.data.uses.value = useMatch.groups.uses
+							s.data.uses.max = useMatch.groups.uses
+							s.data.uses.per = useMatch.groups.unit.toLowerCase()
+							s.data.preparation.mode = "innate"
+						})
+					}
+
+					let willMatch = p.innerText.match(/^At will/)
+					if (willMatch) {
+						spells.forEach(s => s.data.preparation.mode = "atwill")
+					}
+
+					monster.items.push(...spells)
+					continue
+				}
+				let legactMatch = p.innerText.match(/take (up to )?((?<word>[a-zA-Z]+)|(?<number>\d+)) legendary actions/)
+				if (legactMatch != null) {
+					if (legactMatch.groups.word) {
+						monster.data.resources.legact.value = translateNumber(legactMatch.groups.word)
+						monster.data.resources.legact.max = translateNumber(legactMatch.groups.word)
+					} else {
+						monster.data.resources.legact.value = parseInt(legactMatch.groups.number)
+						monster.data.resources.legact.max = parseInt(legactMatch.groups.number)
+					}
+				}
+				continue
+			}
+			if (feat.data.attackBonus > 0) { 
+				// (r|m)wak => dex || str
+				if (feat.data.actionType.endsWith("wak")) {
+					if (calcAbilityMod(monster.data.abilities.str.value) + profMod == feat.data.attackBonus) {
+						feat.data.ability = "str"
+						feat.data.attackBonus = 0
+					} else if (calcAbilityMod(monster.data.abilities.dex.value) + profMod == feat.data.attackBonus) {
+						feat.data.ability = "dex"
+						feat.data.attackBonus = 0
+					} else {
+						// TODO what to do now ?
+						feat.data.attackBonus = -profMod
+					}
+				} else {
+					feat.data.attackBonus = 0
+				}
+			}
+			monster.items.push(feat)
+		}
+	}
+
+	//================== Legendary Resistance ==================//
+	let desc = document.querySelector('.mon-stat-block__description-blocks')
+	let legresMatch = desc.innerText.match(/Legendary Resistance \((?<legres>\d+)\//)
+	if (legresMatch != null) {
+		monster.data.resources.legres.value = legresMatch.groups.legres
+		monster.data.resources.legres.max = legresMatch.groups.legres
+	}
+
+	//================== Spellcasting ==================//
+	let spellFeat = monster.items.find(i => i.name === "Spellcasting")
+	if (spellFeat) {
+		let spellcasterlevelMatch = spellFeat.data.description.value.match(/(?<level>\d+)\w+-level spellcaster/)
+		if (spellcasterlevelMatch) {
+			monster.data.details.spellLevel = spellcasterlevelMatch.groups.level
+		}
+
+		let spellabilityMatch = spellFeat.data.description.value.match(/spellcasting ability is (?<ability>\w+)/)
+		if (spellabilityMatch) {
+			monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
+		}
+	} else {
+		spellFeat = monster.items.find(i => i.name.startsWith("Innate Spellcasting"))
+		if (spellFeat) {
+			let spellabilityMatch = spellFeat.data.description.value.match(/spellcasting ability is (?<ability>\w+)/)
+			if (spellabilityMatch) {
+				monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
+			}
+		}
+	}
+
+	//================== Description / Source / Environment ==================//
+	monster.data.details.biography.value = document.querySelector('.detail-content .more-info-content').innerHTML
+	monster.data.details.source = document.querySelector('p.monster-source').innerText
+	let env = document.querySelectorAll('.environment-tag')
+	if (env) {
+		let envs = []
+		env.forEach(e => envs.push(e.innerText))
+		monster.data.details.environment = envs.join(',')
+	}
+
+	//================== Lair Actions ==================//
+	let descParts = document.querySelector('.mon-details__description-block-content')
+	if (descParts) {
+		for (let i = 0; i < descParts.children.length; i++) {
+			if (descParts.children[i].innerText !== "Lair Actions") {
+				continue
+			}
+
+			let initMatch = descParts.children[i + 1].innerText.match(/on initiative (count )?(?<init>\d+)/i)
+			if (initMatch != null) {
+				monster.data.resources.lair.initiative = initMatch.groups.init
+				monster.data.resources.lair.value = true
+			}
+			descParts.children[i + 2].querySelectorAll('li').forEach(la => {
+				let lairAction = NewItem()
+				lairAction.parseActionItem(la, "Lair")
+				if (lairAction.data.attackBonus > 0) { lairAction.data.attackBonus -= profMod }
+				lairAction.data.activation.cost = 1
+				lairAction.data.activation.type = "lair"
+				monster.items.push(lairAction)
+			})
+		}
+	}
+
+	//================== Token Optimizations ==================//
+	if (monster.data.resources.legact.value > 0) {
+		monster.token.bar2 = { attribute: "resources.legact" }
+	}
+
+	switch (monster.data.traits.size) {
+		case "tiny":
+			monster.token.scale = 0.5
+			break
+		case "sm":
+			monster.token.scale = 0.8
+			break
+		case "lg":
+			monster.token.width = 2
+			monster.token.height = 2
+			break
+		case "huge":
+			monster.token.width = 3
+			monster.token.height = 3
+			break
+		case "grg":
+			monster.token.width = 4
+			monster.token.height = 4
+			break
+	}
+
+	return monster
+}
 
 async function fetchSpells(doc) {
 	let uris = new Set()
@@ -459,6 +472,22 @@ function NewItem(params) {
 	return {
 		name: '',
 		type: '',
+		flags: {
+			betterRolls5e: {
+				critRange: { type: "String", value: "", },
+				critDamage: { type: "String", value: "", },
+				quickDesc: { type: "Boolean", value: false, altValue: true, },
+				quickAttack: { type: "Boolean", value: true, altValue: true, },
+				quickSave: { type: "Boolean", value: true, altValue: true, },
+				quickDamage: { type: "Array", value: [], altValue: [], context: {} },
+				quickVersatile: { type: "Boolean", value: false, altValue: false },
+				quickProperties: { type: "Boolean", value: true, altValue: true },
+				quickCharges: { type: "Boolean", value: true, altValue: true },
+				quickTemplate: { type: "Boolean", value: true, altValue: true },
+				quickOther: { type: "Boolean", value: true, altValue: true, context: "" },
+				quickFlavor: { type: "Boolean", value: true, altValue: true }
+			}
+		},
 		data: {
 			ability: '',
 			actionType: '', //eg save
