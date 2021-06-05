@@ -53,15 +53,15 @@ function translateSkills(skill) {
 }
 
 function translateActionType(type) {
-	switch (type) {
-		case "Melee Weapon Attack":
+	switch (type.toLowerCase()) {
+		case "melee weapon attack":
 			return 'mwak'
-		case "Melee or Ranged Weapon Attack":
-		case "Ranged Weapon Attack":
+		case "melee or ranged weapon attack":
+		case "ranged weapon attack":
 			return 'rwak'
-		case "Melee Spell Attack":
+		case "melee spell attack":
 			return 'msak'
-		case "Ranged Spell Attack":
+		case "ranged spell attack":
 			return 'rsak'
 	}
 
@@ -107,8 +107,11 @@ function translateNumber(number) {
 
 function translateToSingular(text) {
 	switch (text) {
+		case "hours":
 		case "Hours": return "Hour"
+		case "minutes":
 		case "Minutes": return "Minute"
+		case "rounds":
 		case "Rounds": return "Round"
 		default: return text
 	}
@@ -184,8 +187,8 @@ function calcAbilityMod(score) {
 		case 20:
 			return 5
 		default:
-			let mod = score-10
-			return Math.floor(mod/2)
+			let mod = score - 10
+			return Math.floor(mod / 2)
 	}
 }
 
@@ -198,4 +201,57 @@ function translateUseType(useType) {
 		default:
 			return useType
 	}
+}
+
+function translateLevelToSpellslots(level) {
+	slots = {
+		spell1: { value: 0, max: 0 },
+		spell2: { value: 0, max: 0 },
+		spell3: { value: 0, max: 0 },
+		spell4: { value: 0, max: 0 },
+		spell5: { value: 0, max: 0 },
+		spell6: { value: 0, max: 0 },
+		spell7: { value: 0, max: 0 },
+		spell8: { value: 0, max: 0 },
+		spell9: { value: 0, max: 0 },
+	}
+	switch (level) {
+		case level >= 1:
+			slots.spell1.value += 2
+		case level >= 2:
+			slots.spell1.value++
+		case level >= 3:
+			slots.spell1.value++
+			slots.spell2.value = 2
+		case level >= 4:
+			slots.spell2.value++
+		case level >= 5:
+			slots.spell3.value = 2
+		case level >= 6:
+			slots.spell3.value++
+		case level >= 7:
+			slots.spell4.value++
+		case level >= 8:
+			slots.spell4.value++
+		case level >= 9:
+			slots.spell5.value++
+		case level >= 10:
+			slots.spell5.value++
+		case level >= 11:
+			slots.spell6.value++
+		case level >= 13:
+			slots.spell7.value++
+		case level >= 15:
+			slots.spell8.value++
+		case level >= 17:
+			slots.spell9.value++
+		case level >= 18:
+			slots.spell5.value++
+		case level >= 19:
+			slots.spell6.value++
+		case level >= 20:
+			slots.spell7.value++
+	}
+
+	return slots
 }

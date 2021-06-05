@@ -15,7 +15,20 @@ waitforLoad().then(() => {
 	const config = { childList: true, subtree: true }
 
 	const onChangedSidebar = function () {
+		console.log("changed")
 		const header = document.querySelector("div.ct-sidebar__header")
+		const spellManager = document.querySelector(".ct-class-spell-manager__info")
+		const spellSyncButton = document.getElementById("paradox_spell_sync")
+
+		if (spellManager && !spellSyncButton) {
+			let ssb = document.createElement("button")
+			ssb.textContent = "sync"
+			ssb.onclick = syncSpells
+			ssb.id = "paradox_spell_sync"
+			spellManager.appendChild(ssb)
+			return
+		}
+
 		if (!header) return
 
 		const type = getType(document)
@@ -29,6 +42,12 @@ waitforLoad().then(() => {
 
 		const id = type + ":" + name
 		console.log(id)
+		let button = document.getElementById("paradox_import_start")
+		if (button) {
+			if (button.getAttribute("type") == id) return
+
+			button.setAttribute("type", id)
+		}
 
 		// TODO: change request type (optional add additional button)
 		browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "char-request", payload: name, requestId: id } }))
@@ -68,9 +87,12 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 		button = document.createElement("button")
 		button.id = "paradox_import_start"
 		let textNode = document.createTextNode(text)
+		button.setAttribute("type", id)
 		button.appendChild(textNode)
 
 		header.appendChild(button)
+	} else {
+		if (button.getAttribute("type" != id)) return
 	}
 
 	button.textContent = text
@@ -118,6 +140,221 @@ function getType(node) {
 	const type = typeMatch.groups.type
 
 	return type
+}
+
+async function syncSpells(c) {
+	console.log("starting sync")
+	c.target.disabled = true
+
+	const spellManager = document.querySelector(".ct-spell-manager")
+	let spells = []
+	spellManager.querySelectorAll(".ct-spell-manager__spell .ddbc-collapsible__header").forEach(s => {
+		s.click()
+		const spell = parseSpellbookSpell(s)
+		spells.push(spell)
+		s.click()
+	})
+
+	for (let index in spells) {
+		const spell = spells[index]
+		let message = {
+			type: "char",
+			payload: spell
+		}
+
+		console.log(spell)
+		browser.runtime.sendMessage(JSON.stringify(message))
+		await Sleep(150)
+	}
+
+	c.target.disabled = false
+	console.log("done syncing")
+}
+
+function parseSpellbookSpell(s) {
+	const content = s.nextSibling
+
+	let item = NewItem()
+	item.type = "spell"
+	item.name = s.querySelector(".ddbc-spell-name").childNodes[0].textContent
+
+	item.data.description.value = content.querySelector(".ct-spell-detail__description").innerHTML
+
+
+	const schoolLevelNodes = content.querySelectorAll(".ct-spell-detail__level-school .ct-spell-detail__level-school-item")
+
+	let schoolText = ""
+	let level = 0
+	if (content.querySelector(".ct-spell-detail__level-school").innerText.match(/Cantrip/)) {
+		schoolText = schoolLevelNodes[0].innerText
+	} else {
+		schoolText = schoolLevelNodes[1].innerText
+		const levelMatch = schoolLevelNodes[0].innerText.match(/^(?<level>\d)\w+ Level$/)
+		if (levelMatch) {
+			level = parseInt(levelMatch.groups.level)
+		}
+	}
+
+	if (schoolText.toLowerCase() === "transmutation") {
+		item.data.school = "trs"
+	} else {
+		item.data.school = shortifyAttribute(schoolText)
+	}
+
+	item.data.level = level
+
+	item.data.components = {
+		concentration: false,
+		material: false,
+		ritual: false,
+		somatic: false,
+		vocal: false,
+		//value: "",
+	}
+
+	content.querySelectorAll(".ddbc-property-list .ddbc-property-list__property").forEach(p => {
+		const label = p.querySelector(".ddbc-property-list__property-label").innerText.trim()
+		const value = p.querySelector(".ddbc-property-list__property-content").innerText.trim()
+
+		switch (label) {
+			case "Components:":
+				value.split(', ').forEach(c => {
+					switch (c) {
+						case "V":
+							item.data.components.vocal = true
+							break
+						case "S":
+							item.data.components.somatic = true
+							break
+						case "M":
+							item.data.components.material = true
+							break
+						case "C":
+							item.data.components.concentration = true
+							break
+						case "R":
+							item.data.components.ritual = true
+							break
+					}
+				})
+
+				const materialNode = p.querySelector(".ct-spell-detail__components-description")
+				if (materialNode) {
+					item.data.materials = {
+						value: materialNode.childNodes[1].innerText
+					}
+				}
+
+				break
+			case "Casting Time:":
+				const castTimeUnitMatch = value.match(/(?<value>\d+) (?<unit>\w+)/)
+				if (castTimeUnitMatch && castTimeUnitMatch.groups) {
+					item.data.activation.cost = parseInt(castTimeUnitMatch.groups.value)
+					item.data.activation.type = translateToSingular(castTimeUnitMatch.groups.unit).toLowerCase()
+				}
+				break
+			case "Duration:":
+				if (value == "Instantaneous") {
+					item.data.duration.units = "inst"
+					break
+				}
+				const durationTimeUnitMatch = value.match(/(?<value>\d+) (?<unit>\w+)/)
+				if (durationTimeUnitMatch && durationTimeUnitMatch.groups) {
+					item.data.duration.value = parseInt(durationTimeUnitMatch.groups.value)
+					item.data.duration.units = translateToSingular(durationTimeUnitMatch.groups.unit).toLowerCase()
+				}
+				if (value.match(/Concentration/)) {
+					item.data.components.concentration = true
+				}
+				break
+			case "Source:":
+				item.data.source = value
+				break
+			case "Range/Area:":
+				// self
+				if (value == "Self" || value == "Touch") {
+					item.data.range.units = value.toLowerCase()
+					break
+				}
+				const node = p.querySelector(".ddbc-property-list__property-content")
+				// range
+				let rangeString = node.childNodes[0].wholeText
+				if (!rangeString) {
+					rangeString = node.childNodes[0].innerText
+				}
+
+				if (rangeString.endsWith("/")) {
+					rangeString = rangeString.substring(0, rangeString.length - 1)
+				}
+				if (rangeString.endsWith("ft.")) {
+					rangeString = rangeString.substring(0, rangeString.length - 3)
+				}
+
+				item.data.range.value = rangeString
+				item.data.range.units = "ft"
+
+				if (item.data.range.value == "Self" || item.data.range.value == "Touch") {
+					item.data.range.units = item.data.range.value.toLowerCase()
+					item.data.range.value = null
+				}
+
+				// range and area
+				if (node.childNodes.length > 2) {
+					// area
+					item.data.target.value = node.childNodes[2].querySelector(".ddbc-distance-number__number").innerText
+					item.data.target.units = "ft"
+					const iconMatch = p.querySelector(".ct-spell-detail__range-icon").className.match(/i-aoe-(?<type>\w+)/)
+					if (iconMatch && iconMatch.groups) {
+						item.data.target.type = iconMatch.groups.type
+					}
+				}
+				break
+			case "Attack/Save:":
+				item.data.actionType = "save"
+				item.data.save.ability = value.split(" ")[0].toLowerCase()
+				item.data.save.dc = value.split(" ")[1]
+				break
+		}
+	})
+
+	content.querySelectorAll(".ct-spell-caster__modifier").forEach((mod, i) => {
+		const form = mod.querySelector(".ct-spell-caster__modifier-amount").innerText
+		const typeMatch = mod.querySelector(".ddbc-damage-type-icon__img").className.match(/i-type-(?<type>\w+)/)
+		const contextNode = mod.querySelector(".ct-spell-caster__modifier-restriction")
+
+		if (contextNode) {
+			const context = contextNode.innerText.substring(1, contextNode.innerText.length - 1)
+			item.data.damage.parts.push([form, typeMatch.groups.type, context])
+			item.flags.betterRolls5e.quickDamage.context[i] = context
+		} else {
+			item.data.damage.parts.push([form, typeMatch.groups.type])
+		}
+	})
+
+	if (item.data.damage.parts.length > 0) {
+		let scaling = "cantrip"
+		let form = ""
+		const diceMatch = item.data.damage.parts[0][0].match(/\d+(?<dice>d\d+)/)
+		if (diceMatch) {
+			form = "1" + diceMatch.groups.dice
+		} else {
+			form = item.data.damage.parts[0][0]
+		}
+		if (item.data.level > 0) {
+			scaling = "level"
+		}
+		item.data.scaling = {
+			formula: form,
+			mode: scaling
+		}
+	}
+
+	const actionTypeMatch = content.querySelector(".ct-spell-detail__description").innerText.match(/(?<type>(melee|ranged) (weapon|spell) attack)/)
+	if (actionTypeMatch) {
+		item.data.actionType = translateActionType(actionTypeMatch.groups.type)
+	}
+
+	return item
 }
 
 function parseSpell() {
@@ -192,28 +429,57 @@ function parseSpell() {
 
 				break
 			case "Casting Time:":
-				const castTimeUnit = value.split(" ")
-				item.data.activation.cost = parseInt(castTimeUnit[0])
-				item.data.activation.type = translateToSingular(castTimeUnit[1].toLowerCase())
+				const castTimeUnitMatch = value.match(/(?<value>\d+) (?<unit>\w+)/)
+				if (castTimeUnitMatch && castTimeUnitMatch.groups) {
+					item.data.activation.cost = parseInt(castTimeUnitMatch.groups.value)
+					item.data.activation.type = translateToSingular(castTimeUnitMatch.groups.unit).toLowerCase()
+				}
 				break
 			case "Duration:":
 				if (value == "Instantaneous") {
 					item.data.duration.units = "inst"
 					break
 				}
-				const durationUnit = value.split(" ")
-				item.data.duration.value = parseInt(durationUnit[0])
-				item.data.duration.type = translateToSingular(durationUnit[1].toLowerCase())
+				const durationTimeUnitMatch = value.match(/(?<value>\d+) (?<unit>\w+)/)
+				if (durationTimeUnitMatch && durationTimeUnitMatch.groups) {
+					item.data.duration.value = parseInt(durationTimeUnitMatch.groups.value)
+					item.data.duration.units = translateToSingular(durationTimeUnitMatch.groups.unit).toLowerCase()
+				}
+				if (value.match(/Concentration/)) {
+					item.data.components.concentration = true
+				}
 				break
 			case "Source:":
 				item.data.source = value
 				break
-			case "Range/Area:": // TODO not working
+			case "Range/Area:":
+				// self
+				if (value == "Self" || value == "Touch") {
+					item.data.range.units = value.toLowerCase()
+					break
+				}
 				const node = p.querySelector(".ddbc-property-list__property-content")
-				console.error(node)
 				// range
-				item.data.range.value = node.childNodes[0].querySelector(".ddbc-distance-number__number").innerText
+				let rangeString = node.childNodes[0].wholeText
+				if (!rangeString) {
+					rangeString = node.childNodes[0].innerText
+				}
+
+				if (rangeString.endsWith("/")) {
+					rangeString = rangeString.substring(0, rangeString.length - 1)
+				}
+				if (rangeString.endsWith("ft.")) {
+					rangeString = rangeString.substring(0, rangeString.length - 3)
+				}
+
+				item.data.range.value = rangeString
 				item.data.range.units = "ft"
+
+				if (item.data.range.value == "Self" || item.data.range.value == "Touch") {
+					item.data.range.units = item.data.range.value.toLowerCase()
+					item.data.range.value = null
+				}
+
 				// range and area
 				if (node.childNodes.length > 2) {
 					// area
@@ -225,8 +491,50 @@ function parseSpell() {
 					}
 				}
 				break
+			case "Attack/Save:":
+				item.data.actionType = "save"
+				item.data.save.ability = value.split(" ")[0].toLowerCase()
+				item.data.save.dc = value.split(" ")[1]
+				break
 		}
 	})
+
+	document.querySelectorAll(".ct-spell-caster__modifier").forEach((mod, i) => {
+		const form = mod.querySelector(".ct-spell-caster__modifier-amount").innerText
+		const typeMatch = mod.querySelector(".ddbc-damage-type-icon__img").className.match(/i-type-(?<type>\w+)/)
+		const contextNode = mod.querySelector(".ct-spell-caster__modifier-restriction")
+
+		if (contextNode) {
+			const context = contextNode.innerText.substring(1, contextNode.innerText.length - 1)
+			item.data.damage.parts.push([form, typeMatch.groups.type, context])
+			item.flags.betterRolls5e.quickDamage.context[i] = context
+		} else {
+			item.data.damage.parts.push([form, typeMatch.groups.type])
+		}
+	})
+
+	if (item.data.damage.parts.length > 0) {
+		let scaling = "cantrip"
+		let form = ""
+		const diceMatch = item.data.damage.parts[0][0].match(/\d+(?<dice>d\d+)/)
+		if (diceMatch) {
+			form = "1" + diceMatch.groups.dice
+		} else {
+			form = item.data.damage.parts[0][0]
+		}
+		if (item.data.level > 0) {
+			scaling = "level"
+		}
+		item.data.scaling = {
+			formula: form,
+			mode: scaling
+		}
+	}
+
+	const actionTypeMatch = document.querySelector(".ct-spell-detail__description").innerText.match(/(?<type>(melee|ranged) (weapon|spell) attack)/)
+	if (actionTypeMatch) {
+		item.data.actionType = translateActionType(actionTypeMatch.groups.type)
+	}
 
 	return item
 }
@@ -521,7 +829,11 @@ function NewItem() {
 		name: '',
 		type: '',
 		flags: {
-			betterRolls5e: {}
+			betterRolls5e: {
+				quickDamage: {
+					context: {}
+				}
+			}
 		},
 		data: {
 			ability: '',

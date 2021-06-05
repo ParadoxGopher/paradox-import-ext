@@ -360,6 +360,8 @@ async function scrapeMonster() {
 		if (spellabilityMatch) {
 			monster.data.attributes.spellcasting = shortifyAttribute(spellabilityMatch.groups.ability)
 		}
+
+		monster.data.spells = translateLevelToSpellslots(monster.data.details.spellLevel)
 	} else {
 		spellFeat = monster.items.find(i => i.name.startsWith("Innate Spellcasting"))
 		if (spellFeat) {
