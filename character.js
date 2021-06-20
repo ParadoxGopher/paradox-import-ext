@@ -1,3 +1,4 @@
+console.error("starting")
 async function waitforLoad() {
 	let header = document.querySelector(".ddbc-character-tidbits__menu-callout")
 	while (!header) {
@@ -50,7 +51,7 @@ waitforLoad().then(() => {
 		}
 
 		// TODO: change request type (optional add additional button)
-		browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "char-request", payload: name, requestId: id } }))
+		browser.runtime.sendMessage(JSON.stringify({ type: "request", payload: { type: "actor_item-request", payload: name, requestId: id } }))
 	}
 
 	const observer = new MutationObserver(onChangedSidebar)
@@ -77,7 +78,7 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 
 	let id = type + ":" + name
 
-	if (req.type !== "char-response" || req.requestId !== id) return
+	if (req.type !== "actor_item-response" || req.requestId !== id) return
 
 	const header = document.querySelector("div.ct-sidebar__pane-gap.ct-sidebar__pane-gap--top")
 
@@ -103,11 +104,6 @@ browser.runtime.onMessage.addListener((req, s, respond) => {
 
 function parse() {
 	let type = getType(document)
-	let origin = getOrigin(type, document)
-
-	if (origin) {
-		return parseFeat()
-	}
 
 	let item = null
 	switch (type) {
@@ -120,10 +116,14 @@ function parse() {
 		case "spell":
 			item = parseSpell()
 			break
+		case "class":
+			item = parseFeat()
+			break
 	}
 
 	let message = {
-		type: "char",
+		type: "actor_item",
+		replace: true,
 		payload: item
 	}
 
@@ -146,25 +146,38 @@ async function syncSpells(c) {
 	console.log("starting sync")
 	c.target.disabled = true
 
-	const spellManager = document.querySelector(".ct-spell-manager")
 	let spells = []
+	const spellManager = document.querySelector(".ct-spell-manager")
 	spellManager.querySelectorAll(".ct-spell-manager__spell .ddbc-collapsible__header").forEach(s => {
+		const state = s.querySelector(".ct-spell-manager__spell-header-actions button span").innerText
+
+		if (state == "LEARN") return
+
 		s.click()
 		const spell = parseSpellbookSpell(s)
+		spell.data.preparation = {
+			mode: "prepared",
+			prepared: state !== "PREPARE",
+		}
+		
 		spells.push(spell)
+
 		s.click()
+
 	})
 
 	for (let index in spells) {
-		const spell = spells[index]
+
 		let message = {
-			type: "char",
-			payload: spell
+			type: "actor_item",
+			replace: false,
+			payload: spells[index]
 		}
 
-		console.log(spell)
 		browser.runtime.sendMessage(JSON.stringify(message))
-		await Sleep(150)
+
+		await Sleep(200)
+
 	}
 
 	c.target.disabled = false
@@ -177,6 +190,8 @@ function parseSpellbookSpell(s) {
 	let item = NewItem()
 	item.type = "spell"
 	item.name = s.querySelector(".ddbc-spell-name").childNodes[0].textContent
+	
+	if (item.name == "+") item.name = s.querySelector(".ddbc-spell-name").childNodes[1].textContent
 
 	item.data.description.value = content.querySelector(".ct-spell-detail__description").innerHTML
 
@@ -542,14 +557,13 @@ function parseSpell() {
 function parseItem() {
 	let item = NewItem()
 	const itemTypeAndRarity = document.querySelector('.ct-item-detail__intro').innerText.split(',')
-	const itemTypeMatch = itemTypeAndRarity[0].trim().match(/(?<type>\w+)\s/)
-	const itemType = itemTypeMatch.groups.type
-	// TODO item.data.weaponType //not gonna do this right now
+	//const itemTypeMatch = itemTypeAndRarity[0].trim().match(/(?<type>\w+)\s/)
+	//const itemType = itemTypeMatch.groups.type
+
 	const itemRarity = itemTypeAndRarity[1].trim().split(" ", 1)[0]
 	if (itemTypeAndRarity[1].match(/requires attunement/)) {
 		item.data.attunement = 1
 	}
-	item.type = itemType.toLowerCase()
 	item.name = document.querySelector('.ct-sidebar__heading .ddbc-item-name').innerText.trim()
 	item.data.rarity = itemRarity
 	item.data.activation.type = "action"
@@ -679,7 +693,7 @@ function parseItem() {
 						spc: false
 						thr: false *
 						two: false *
-						ver: false 
+						ver: false * 
 				*/
 				const props = wp.querySelector('.ddbc-property-list__property-content').innerText
 				props.split(', ').forEach(p => {
@@ -705,13 +719,39 @@ function parseItem() {
 						case "Loading":
 							item.data.properties.lod = true
 							break
+						case "Versatile (1d8)":
+						case "Versatile (1d10)":
+							item.data.properties.ver = true
+							break
 					}
 				})
 				break
 		}
 	})
 
+	// define weapon type at last
+	const tags = Array.from(document.querySelectorAll(".ct-item-detail__tag"))
+	console.log(tags)
+	// 1. if we can do attacks it should be a weapon
+	if (item.data.actionType == "mwak" || item.data.actionType == "rwak") {
+		item.type = "weapon"
+	} else /* 2. check for consumables */ if (tags.find(t => t.innerText == "CONSUMABLE")) {
+		item.type = "consumable"
+	} else /* 3. check for container */ if (tags.find(t => t.innerText == "CONTAINER")) {
+		item.type = "backpack"
+	} else /* 4. utility is a tool */ if (tags.find(t => t.innerText == "UTILITY")) {
+		item.type = "tool"
+	} else if (tags.find(t => t.innerText == "COMBAT" || t.innerText == "BUFF")) {
+		item.type = "equipment"
+	} else {
+		item.type = "loot"
+	}
 
+	// in case we have a quantity
+	const quantity = document.querySelector(".ct-simple-quantity__input")
+	if (quantity) {
+		item.data.quantity = parseInt(quantity.value)
+	}
 
 	return item
 }

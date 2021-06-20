@@ -160,7 +160,7 @@ async function scrapeMonster() {
 	let parts = meta.split(',')
 	let [size, ...type] = parts[0].split(" ")
 	monster.data.traits.size = translateSize(size.toLowerCase().trim())
-	monster.data.details.type = type.join(" ")
+	monster.data.details.type = type.join(" ").trim()
 	monster.data.details.alignment = parts[1].trim()
 
 	//================== AC/HP/Speed ==================//

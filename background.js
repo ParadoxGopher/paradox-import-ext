@@ -11,7 +11,7 @@ browser.runtime.onMessage.addListener((request, sender, respond) => {
 		case "monster-response":
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/monsters/*"}).then(sendToTabs(request)).catch(console.error)
 			break
-		case "char-response":
+		case "actor_item-response":
 		case "actor-response":
 			browser.tabs.query({ "url": "*://*.dndbeyond.com/profile/*/characters/*"}).then(sendToTabs(request)).catch(console.error)
 			break

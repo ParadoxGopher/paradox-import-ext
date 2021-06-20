@@ -16,4 +16,4 @@
 
 ## dev run
 
-web-ext run --firefox="C:\Program Files\Firefox Developer Edition\firefox.exe" --firefox-profile="DnD" --verbose
+web-ext run --firefox="C:\Program Files\Firefox Developer Edition\firefox.exe" --firefox-profile="DnD"
