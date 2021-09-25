@@ -50,7 +50,7 @@ async function scrapeMonster() {
 				wis: { value: 10, proficient: 0 },
 			},
 			attributes: {
-				ac: { value: 10 },
+				ac: { value: 10, flat: 10, calc: "flat" },
 				hp: { value: 10, max: 10, formula: "1d20" },
 				speed: { value: "30 ft.", special: "" },
 				senses: { blindsight: 0, darkvision: 0, tremorsense: 0, truesight: 0, special: "", units: "ft"},
@@ -166,6 +166,7 @@ async function scrapeMonster() {
 	//================== AC/HP/Speed ==================//
 	let acHpSpeed = document.querySelectorAll('.mon-stat-block__attributes .mon-stat-block__attribute')
 	monster.data.attributes.ac.value = parseInt(acHpSpeed[0].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
+	monster.data.attributes.ac.flat = monster.data.attributes.ac.value
 	monster.data.attributes.hp.value = parseInt(acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-value').innerText.trim())
 	monster.data.attributes.hp.max = monster.data.attributes.hp.value
 	monster.data.attributes.hp.formula = acHpSpeed[1].querySelector('.mon-stat-block__attribute-data-extra').innerText.replace('(', '').replace(')', '').trim()
